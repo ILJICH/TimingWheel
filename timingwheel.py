@@ -40,24 +40,31 @@ class BaseWheel(object):
     def reset(self, new_position):
         for slot in self.slots:
             slot.clear()
+
         self.position = new_position
 
 
 class TimeWheel(BaseWheel):
     def __init__(self, slots, miss_callback=None):
         self.current_time = self.get_time()
-        super(TimeWheel, self).__init__(slots, self.current_time % slots, miss_callback)
+        super(TimeWheel, self).__init__(
+            slots, self.current_time % slots, miss_callback
+        )
 
     def get_time(self):
         return int(time())
 
-    def turn(self):
-        new_time = self.get_time()
+    def turn(self, new_time=None):
+        if new_time is None:
+            new_time = self.get_time()
+
         delta = new_time - self.current_time
 
         if delta < 0:
-            raise ValueError('Time went backwards! Last turn time: {}, current time: {}'
-                             .format(self.current_time, new_time))
+            raise ValueError(
+                'Time went backwards! Last turn time: {}, current time: {}'
+                .format(self.current_time, new_time)
+            )
 
         if delta > 0:
             super(TimeWheel, self).turn(delta)
