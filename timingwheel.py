@@ -3,10 +3,10 @@ from time import time
 
 class BaseWheel(object):
     """
-    Base implementation of a timing wheel. In fact, noone forces you to even 
+    Base implementation of a timing wheel. In fact, noone forces you to even
     use time here.
     """
-    
+
     def __init__(self, slots, initial_slot=0):
         """
         :type slots: int
@@ -56,6 +56,11 @@ class BaseWheel(object):
         :raises ValueError: when the provided offset is larger than the size
                             of the wheel.
         """
+        if slot_offset <= 0:
+            raise ValueError(
+                'Can\'t insert entries in the past.'
+            )
+
         if slot_offset >= len(self.slots):
             raise ValueError(
                 'Cannot add to the {}(st/nd/rd/th) following slot because '
@@ -74,7 +79,7 @@ class BaseWheel(object):
 
         :raises KeyError: when there's no entry with that key.
         """
-        for offset in xrange(1, len(self.slots) - 1):
+        for offset in xrange(0, len(self.slots)):
             slot = self._next_step(offset)
             if key in self.slots[slot]:
                 self.slots[slot].pop(key)
