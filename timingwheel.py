@@ -2,19 +2,78 @@ from time import time
 
 
 class BaseWheel(object):
-    def __init__(self, slots, initial_slot=0, miss_callback=None):
-        self.position = initial_slot
+    """
+    Base implementation of a timing wheel. In fact, noone forces you to even 
+    use time here.
+    """
+    
+    def __init__(self, slots, initial_slot=0):
+        """
+        :type slots: int
+        :param slots: how many slots the wheel will have. Keep in mind that the
+                      furthest slot you can add to is less by one.
+        :type initial_slot: int
+        :param initial_slot: the index of a starting slot. Notice that it will
+                             be fitted into the size of the wheel by ignoring
+                             all full circles.
+        """
         self.slots = [{} for _ in xrange(slots)]
-        self.miss_callback = miss_callback
+        self.position = initial_slot % slots
 
     def _next_step(self, slots=1):
+        """
+        Will return the index of the Nth following slot.
+
+        :type slots: int
+        :param slots: the offset. Default: 1 (so, the index of the very next
+                      slot will be returned)
+        """
         return (self.position + slots) % len(self.slots)
 
-    def add(self, key, value):
-        slot = self._next_step(len(self.slots) - 1)
-        self.slots[slot][key] = value
+    def add(self, key, callback, *args, **kwargs):
+        """
+        Add an observed item to the last slot (counting from the current one).
+
+        :param key: any hashable object, that will be used as the key.
+                    Needs to be unique.
+        :param callback: a callable object that will be invoked upon
+                         expiration; args and kwargs will be passed to it.
+        """
+        self.insert(key, len(self.slots) - 1, callback, *args, **kwargs)
+
+    def insert(self, key, slot_offset, callback, *args, **kwargs):
+        """
+        Add an observed item to Nth slot (counting from the current one).
+
+        :param key: any hashable object, that will be used as the key.
+                    Needs to be unique.
+        :type slot_offset: int
+        :param slot_offset: specifies which slot, starting with the current
+                            one, will be used.
+        :param callback: a callable object that will be invoked upon
+                         expiration; args and kwargs will be passed to it.
+
+        :raises ValueError: when the provided offset is larger than the size
+                            of the wheel.
+        """
+        if slot_offset >= len(self.slots):
+            raise ValueError(
+                'Cannot add to the {}(st/nd/rd/th) following slot because '
+                'there are only {} slots available.'
+                .format(slot_offset, len(self.slots))
+            )
+        slot = self._next_step(slot_offset)
+        self.slots[slot][key] = (callback, args, kwargs)
 
     def remove(self, key):
+        """
+        Removes the entry, associated with the key, from the wheel.
+
+        :param key: a hashable object, that was previously added/inserted
+                    into the wheel.
+
+        :raises KeyError: when there's no entry with that key.
+        """
         for offset in xrange(1, len(self.slots) - 1):
             slot = self._next_step(offset)
             if key in self.slots[slot]:
@@ -24,40 +83,90 @@ class BaseWheel(object):
         raise KeyError('Key {} was not found in the wheel.'.format(key))
 
     def turn(self, slots=1):
+        """
+        Turns the wheel some steps forward. This will result in expiration
+        of any entries that are located in passed slots, starting with the
+        current one. The callbacks will be called here.
+
+        :type slots: int
+        :param slots: specifies how many slots will be passed. Default: 1.
+                      Has to be a non-negative number.
+
+        :raises ValueError: if the requested number of slots is negative.
+        """
+        if slots < 0:
+            raise ValueError('Can\'t turn the wheel backward.')
+
         for _ in xrange(slots):
-            self.expire(self.position)
+            self._expire(self.position)
             self.position = self._next_step()
 
-    def expire(self, slot):
+    def _expire(self, slot):
+        """
+        Cleans the specified slot and callbacks for all its contents.
+
+        :type slot: int
+        :param slot: the slot that will be cleaned.
+        """
         slot_contents = self.slots[slot]
 
-        if self.miss_callback:
-            for value in slot_contents.itervalues():
-                self.miss_callback(value)
+        for (callback, args, kwargs) in slot_contents.itervalues():
+            if callback:
+                callback(*args, **kwargs)
 
         slot_contents.clear()
 
     def reset(self, new_position):
+        """
+        Resets the state: purges all the contents and sets the current position
+        to the provided value.
+
+        :type new_position: int
+        :param new_position: slot index that will be taken as the current one.
+        """
         for slot in self.slots:
             slot.clear()
 
-        self.position = new_position
+        self.position = new_position % len(self.slots)
 
 
 class TimeWheel(BaseWheel):
-    def __init__(self, slots, miss_callback=None):
+    """
+    A Timing Wheel -- structure that uses time as a force that turns it.
+    This particular implementation uses time.time() as the source of time
+    and creates slot for every second. It's still your job to give it a turn
+    by calling turn() every new second.
+    Also, if you desire to change the discretization or use your own source
+    of time -- you can simply redefine get_time().
+    """
+
+    def __init__(self, slots):
+        """
+        :type slots: int
+        :param slots: how many slots the wheel will have. Keep in mind that the
+                      furthest slot you can add to is less by one.
+        """
         self.current_time = self.get_time()
         super(TimeWheel, self).__init__(
-            slots, self.current_time % slots, miss_callback
+            slots, self.current_time % slots
         )
 
     def get_time(self):
+        """
+        The result of this function is used by the class to figure out what
+        time is it. Has to return a whole non-negative number.
+        """
         return int(time())
 
-    def turn(self, new_time=None):
-        if new_time is None:
-            new_time = self.get_time()
+    def turn(self):
+        """
+        Calling this method makes the wheel to figure out if it needs to turn
+        and turn, if if needs to. It will panic if it finds out that clock
+        tuned backwards.
 
+        :raises ValueError: if time that passed since last check is negative.
+        """
+        new_time = self.get_time()
         delta = new_time - self.current_time
 
         if delta < 0:
