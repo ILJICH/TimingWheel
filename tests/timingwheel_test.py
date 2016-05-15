@@ -1,6 +1,6 @@
 import pytest
 
-from timingwheel import BaseWheel, TimeWheel
+from timingwheel.timingwheel import BaseWheel, TimeWheel
 
 
 class TestBaseWheel(object):
@@ -130,7 +130,7 @@ class TestTimingWheel(object):
     @pytest.fixture()
     def set_clock(self, monkeypatch):
         def inner(time):
-            monkeypatch.setattr('timingwheel.time', lambda: time)
+            monkeypatch.setattr('timingwheel.timingwheel.time', lambda: time)
         return inner
 
     def test_inst(self, wheel):
