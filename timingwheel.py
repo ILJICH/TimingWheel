@@ -181,4 +181,5 @@ class TimeWheel(BaseWheel):
             )
 
         if delta > 0:
+            self.current_time = new_time
             super(TimeWheel, self).turn(delta)

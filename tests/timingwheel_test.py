@@ -103,7 +103,7 @@ class TestBaseWheel(object):
         wheel.turn(50)
         assert called == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    def test_turn_to_past(self, wheel):
+    def test_turn_backwards(self, wheel):
         with pytest.raises(ValueError):
             wheel.turn(-10)
 
@@ -120,13 +120,74 @@ class TestTimingWheel(object):
     time = 1000
 
     @pytest.fixture(autouse=True)
-    def fixed_time(self, monkeypatch):
-        monkeypatch.setattr('timingwheel.time', lambda: self.time)
+    def fixed_time(self, set_clock):
+        set_clock(self.time)
 
     @pytest.fixture()
     def wheel(self):
         return TimeWheel(10)
 
+    @pytest.fixture()
+    def set_clock(self, monkeypatch):
+        def inner(time):
+            monkeypatch.setattr('timingwheel.time', lambda: time)
+        return inner
+
     def test_inst(self, wheel):
         assert wheel.current_time == self.time
         assert wheel.position == 0
+
+    def test_get_time(self, wheel, set_clock):
+        set_clock(1000.5)
+        assert wheel.get_time() == 1000
+
+        set_clock(1001.5)
+        assert wheel.get_time() == 1001
+
+    def test_turn_empty(self, wheel, set_clock):
+        set_clock(1000.5)
+        wheel.turn()
+        assert wheel.position == 0
+        assert wheel.current_time == 1000
+
+        set_clock(1001)
+        wheel.turn()
+        assert wheel.position == 1
+        assert wheel.current_time == 1001
+
+        set_clock(1020)
+        wheel.turn()
+        assert wheel.position == 0
+        assert wheel.current_time == 1020
+
+    def test_turn_ok(self, wheel, set_clock):
+        called = []
+
+        def callback(index):
+            called.append(index)
+
+        for index in xrange(1, 10):
+            wheel.insert(
+                key=index, slot_offset=index, callback=callback, index=index
+            )
+
+        set_clock(1001)
+        wheel.turn()
+        assert called == []
+
+        set_clock(1002)
+        wheel.turn()
+        assert called == [1]
+
+        set_clock(1007)
+        wheel.turn()
+        assert called == [1, 2, 3, 4, 5, 6]
+
+        set_clock(1100)
+        wheel.turn()
+        assert called == [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    def test_turn_backwards(self, wheel, set_clock):
+        set_clock(900)
+        with pytest.raises(ValueError):
+            wheel.turn()
