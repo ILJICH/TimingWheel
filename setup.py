@@ -4,7 +4,7 @@ from timingwheel import version
 
 setup(
     name='timingwheel',
-    packages='timingwheel',
+    packages=['timingwheel'],
     version=version,
     description='Timing Wheel algorithm implementation',
     author='Valentin Lupachev',
