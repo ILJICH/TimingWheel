@@ -1,6 +1,6 @@
 import pytest
 
-from timingwheel.timingwheel import BaseWheel, TimeWheel
+from timingwheel import BaseWheel, TimeWheel
 
 
 class TestBaseWheel(object):

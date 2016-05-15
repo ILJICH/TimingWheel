@@ -14,4 +14,9 @@ Keep in mind that it is the simplest possible implementation, and it has certain
  * You can't insert an entry in the slot that is about to expire. Thus, the shortest amount of time between inserting a callback and running it is dt..2*dt, where dt is the step of the wheel.
  * Also, currently there's no way to set the set the step of the TimingWheel class, only its size. The step is set to 1 second.
 
+To install and use it you just do:
+```
+pip install timingwheel
+```
+
 That's it, if you have any questions, please mail me at iljich@iljich.name
