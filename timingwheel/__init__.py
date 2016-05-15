@@ -1,3 +1,3 @@
-from timingwheel import BaseWheel, TimeWheel
+from timingwheel import BaseWheel, TimingWheel
 
-version = '0.3'
+version = '0.4'

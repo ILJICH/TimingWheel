@@ -135,33 +135,34 @@ class BaseWheel(object):
         self.position = new_position % len(self.slots)
 
 
-class TimeWheel(BaseWheel):
+class TimingWheel(BaseWheel):
     """
     A Timing Wheel -- structure that uses time as a force that turns it.
     This particular implementation uses time.time() as the source of time
     and creates slot for every second. It's still your job to give it a turn
     by calling turn() every new second.
     Also, if you desire to change the discretization or use your own source
-    of time -- you can simply redefine get_time().
+    of time -- you can simply redefine get_step().
     """
 
-    def __init__(self, slots):
+    def __init__(self, step, slots):
         """
+        :type step: float
+        :param step: the period of time (in seconds) that occupies one slot
         :type slots: int
         :param slots: how many slots the wheel will have. Keep in mind that the
                       furthest slot you can add to is less by one.
         """
-        self.current_time = self.get_time()
-        super(TimeWheel, self).__init__(
-            slots, self.current_time % slots
-        )
+        self.step = step
+        self.current_step = self.get_step()
+        super(TimingWheel, self).__init__(slots, self.current_step)
 
-    def get_time(self):
+    def get_step(self):
         """
         The result of this function is used by the class to figure out what
         time is it. Has to return a whole non-negative number.
         """
-        return int(time())
+        return int(time() / self.step)
 
     def turn(self):
         """
@@ -171,15 +172,15 @@ class TimeWheel(BaseWheel):
 
         :raises ValueError: if time that passed since last check is negative.
         """
-        new_time = self.get_time()
-        delta = new_time - self.current_time
+        new_steps = self.get_step()
+        delta = new_steps - self.current_step
 
         if delta < 0:
             raise ValueError(
                 'Time went backwards! Last turn time: {}, current time: {}'
-                .format(self.current_time, new_time)
+                .format(self.current_step * self.step, new_steps * self.step)
             )
 
         if delta > 0:
-            self.current_time = new_time
-            super(TimeWheel, self).turn(delta)
+            self.current_step = new_steps
+            super(TimingWheel, self).turn(delta)

@@ -1,6 +1,6 @@
 import pytest
 
-from timingwheel import BaseWheel, TimeWheel
+from timingwheel import BaseWheel, TimingWheel
 
 
 class TestBaseWheel(object):
@@ -125,7 +125,7 @@ class TestTimingWheel(object):
 
     @pytest.fixture()
     def wheel(self):
-        return TimeWheel(10)
+        return TimingWheel(1, 10)
 
     @pytest.fixture()
     def set_clock(self, monkeypatch):
@@ -134,31 +134,31 @@ class TestTimingWheel(object):
         return inner
 
     def test_inst(self, wheel):
-        assert wheel.current_time == self.time
+        assert wheel.current_step == self.time
         assert wheel.position == 0
 
-    def test_get_time(self, wheel, set_clock):
+    def test_get_step(self, wheel, set_clock):
         set_clock(1000.5)
-        assert wheel.get_time() == 1000
+        assert wheel.get_step() == 1000
 
         set_clock(1001.5)
-        assert wheel.get_time() == 1001
+        assert wheel.get_step() == 1001
 
     def test_turn_empty(self, wheel, set_clock):
         set_clock(1000.5)
         wheel.turn()
         assert wheel.position == 0
-        assert wheel.current_time == 1000
+        assert wheel.current_step == 1000
 
         set_clock(1001)
         wheel.turn()
         assert wheel.position == 1
-        assert wheel.current_time == 1001
+        assert wheel.current_step == 1001
 
         set_clock(1020)
         wheel.turn()
         assert wheel.position == 0
-        assert wheel.current_time == 1020
+        assert wheel.current_step == 1020
 
     def test_turn_ok(self, wheel, set_clock):
         called = []
@@ -191,3 +191,19 @@ class TestTimingWheel(object):
         set_clock(900)
         with pytest.raises(ValueError):
             wheel.turn()
+
+    def test_small_step(self, set_clock):
+        wheel = TimingWheel(0.2, 10)
+        assert wheel.position == 0
+
+        set_clock(1000.5)
+        wheel.turn()
+        assert wheel.position == 2
+
+    def test_big_step(self, set_clock):
+        wheel = TimingWheel(2, 10)
+        assert wheel.position == 0
+
+        set_clock(1005)
+        wheel.turn()
+        assert wheel.position == 2
